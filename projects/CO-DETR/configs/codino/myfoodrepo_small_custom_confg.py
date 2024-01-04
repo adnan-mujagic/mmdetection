@@ -1,4 +1,9 @@
-_base_ = './co_dino_5scale_swin_l_lsj_16xb1_3x_coco.py'
+_base_ = 'co_dino_5scale_swin_l_lsj_16xb1_1x_coco.py'
+
+image_size = (640, 640)
+batch_augments = [
+    dict(type='BatchFixedSizePad', size=image_size, pad_mask=True)
+]
 
 dataset_type = 'CocoDataset'
 classes = (
@@ -84,76 +89,59 @@ data_root = '/Users/amujagic/university/data/'
 default_hooks = dict(
     logger=dict(_scope_='mmdet', interval=1, type='LoggerHook'))
 
+load_pipeline = [
+    dict(type='LoadImageFromFile'),
+    dict(type='LoadAnnotations', with_bbox=True, with_mask=True),
+    dict(
+        type='RandomResize',
+        scale=image_size,
+        ratio_range=(0.1, 2.0),
+        keep_ratio=True),
+    dict(
+        type='RandomCrop',
+        crop_type='absolute_range',
+        crop_size=image_size,
+        recompute_bbox=True,
+        allow_negative_crop=True),
+    dict(type='FilterAnnotations', min_gt_bbox_wh=(1e-2, 1e-2)),
+    dict(type='RandomFlip', prob=0.5),
+    dict(type='Pad', size=image_size, pad_val=dict(img=(114, 114, 114))),
+]
+
 train_dataloader = dict(
-    batch_size=1,
     dataset=dict(
-        _scope_='mmdet',
         dataset=dict(
-            ann_file='train/annotations.json',
-            backend_args=None,
-            data_prefix=dict(img='train/images/'),
+            type=dataset_type,
+            metainfo=dict(classes=classes),
             data_root=data_root,
-            filter_cfg=dict(filter_empty_gt=False, min_size=32),
-            pipeline=[
-                dict(type='LoadImageFromFile'),
-                dict(type='LoadAnnotations', with_bbox=True, with_mask=True),
-                dict(
-                    keep_ratio=True,
-                    ratio_range=(
-                        0.1,
-                        2.0,
-                    ),
-                    scale=(
-                        1280,
-                        1280,
-                    ),
-                    type='RandomResize'),
-                dict(
-                    allow_negative_crop=True,
-                    crop_size=(
-                        1280,
-                        1280,
-                    ),
-                    crop_type='absolute_range',
-                    recompute_bbox=True,
-                    type='RandomCrop'),
-                dict(min_gt_bbox_wh=(
-                    0.01,
-                    0.01,
-                ), type='FilterAnnotations'),
-                dict(prob=0.5, type='RandomFlip'),
-                dict(
-                    pad_val=dict(img=(
-                        114,
-                        114,
-                        114,
-                    )),
-                    size=(
-                        1280,
-                        1280,
-                    ),
-                    type='Pad'),
-            ],
-            type=dataset_type),
-        pipeline=[
-            dict(max_num_pasted=100, type='CopyPaste'),
-            dict(type='PackDetInputs'),
-        ],
-        type='MultiImageMixDataset'),
-    num_workers=1,
-    persistent_workers=True,
-    sampler=dict(_scope_='mmdet', shuffle=True, type='DefaultSampler'))
+            pipeline=load_pipeline,
+            ann_file='train/annotations.json',
+            data_prefix=dict(img='train/images/'))))
+
+test_pipeline = [
+    dict(type='LoadImageFromFile'),
+    dict(type='Resize', scale=image_size, keep_ratio=True),
+    dict(type='Pad', size=image_size, pad_val=dict(img=(114, 114, 114))),
+    dict(type='LoadAnnotations', with_bbox=True, with_mask=True),
+    dict(
+        type='PackDetInputs',
+        meta_keys=('img_id', 'img_path', 'ori_shape', 'img_shape',
+                   'scale_factor'))
+]
 
 val_dataloader = dict(
     dataset=dict(
+        _scope_='mmdet',
         ann_file='val/annotations.json',
-        data_prefix=dict(img='val/images'),
+        data_prefix=dict(img='val/images/'),
+        pipeline=test_pipeline,
         data_root=data_root,
-        type=dataset_type), )
+        type=dataset_type))
 
 test_dataloader = val_dataloader
 
 model = dict(
+    data_preprocessor=dict(batch_augments=batch_augments),
     bbox_head=[
         dict(
             anchor_generator=dict(
@@ -196,11 +184,11 @@ model = dict(
                 loss_weight=12.0,
                 type='FocalLoss',
                 use_sigmoid=True),
-            num_classes=273,
+            num_classes=num_classes,
             stacked_convs=1,
             type='CoATSSHead'),
     ],
-    query_head=dict(type='CoDINOHead', num_classes=273),
+    query_head=dict(num_classes=num_classes),
     roi_head=[
         dict(
             bbox_head=dict(
@@ -225,7 +213,7 @@ model = dict(
                     loss_weight=12.0,
                     type='CrossEntropyLoss',
                     use_sigmoid=False),
-                num_classes=273,
+                num_classes=num_classes,
                 reg_class_agnostic=False,
                 reg_decoded_bbox=True,
                 roi_feat_size=7,
@@ -244,15 +232,8 @@ model = dict(
                     output_size=7, sampling_ratio=0, type='RoIAlign'),
                 type='SingleRoIExtractor'),
             type='CoStandardRoIHead'),
-    ],
-)
+    ])
 
-val_evaluator = dict(
-    _scope_='mmdet',
-    ann_file=f'{data_root}val/annotations.json',
-    backend_args=None,
-    format_only=False,
-    metric='bbox',
-    type='CocoMetric')
+val_evaluator = dict(ann_file=f'{data_root}val/annotations.json', )
 
 test_evaluator = val_evaluator
