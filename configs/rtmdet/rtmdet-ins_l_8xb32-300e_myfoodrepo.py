@@ -80,12 +80,15 @@ classes = (
     'white-asparagus', 'peach')
 num_classes = 273
 data_root = 'D:/Data/Food/'
-train_ann_file=f'{data_root}train/annotations.json'
-train_image_dir=f'{data_root}train/images/'
-val_ann_file=f'{data_root}val/annotations.json'
-val_image_dir=f'{data_root}val/images/'
+train_ann_file = f'{data_root}train/annotations.json'
+train_image_dir = f'{data_root}train/images/'
+val_ann_file = f'{data_root}val/annotations.json'
+val_image_dir = f'{data_root}val/images/'
 
-batch_size=2
+batch_size = 2
+
+max_epochs = 50
+stage2_num_epochs = 20
 
 # hooks related stuff
 checkpoint_save_interval = 1
@@ -170,9 +173,7 @@ train_dataloader = dict(
         ann_file=train_ann_file,
         data_prefix=dict(img=train_image_dir),
         data_root=data_root,
-        metainfo=metainfo
-    )
-)
+        metainfo=metainfo))
 
 val_dataloader = dict(
     batch_size=batch_size,
@@ -181,29 +182,25 @@ val_dataloader = dict(
         ann_file=val_ann_file,
         data_prefix=dict(img=val_image_dir),
         data_root=data_root,
-        metainfo=metainfo
-    )
-)
+        metainfo=metainfo))
 
 test_dataloader = val_dataloader
 
-val_evaluator = dict(
-    ann_file=val_ann_file
-)
+val_evaluator = dict(ann_file=val_ann_file)
 
-test_evaluator = dict(
-    ann_file=val_ann_file
-)
+test_evaluator = dict(ann_file=val_ann_file)
 
 # change number of classes in the model
-model = dict(
-    bbox_head=dict(
-        num_classes=num_classes
-    )
-)
+model = dict(bbox_head=dict(num_classes=num_classes))
 
 # change checkpoints interval
 default_hooks = dict(
     checkpoint=dict(interval=checkpoint_save_interval),
-    logger=dict(interval=log_interval)
+    logger=dict(interval=log_interval))
+
+train_cfg = dict(
+    max_epochs=max_epochs,
+    dynamic_intervals=[(max_epochs - stage2_num_epochs, 1)]
 )
+
+# should add custom hooks here as well later!
