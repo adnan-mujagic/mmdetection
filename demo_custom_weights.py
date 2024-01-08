@@ -3,7 +3,7 @@ import random
 
 from mmdet.apis import DetInferencer
 
-NUM_IMAGES = 4
+NUM_IMAGES = 10
 WEIGHTS_PATH = 'D:/Projects/Cereal/Weights/epoch_2_co_detr.pth'
 VALIDATION_IMAGES_PATH = 'D:/Data/Food/test/images'
 OUTPUT_DIR = 'outputs/'
@@ -20,5 +20,5 @@ def main():
         model(os.path.join(VALIDATION_IMAGES_PATH, image), out_dir=OUTPUT_DIR)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
